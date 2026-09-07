@@ -115,7 +115,7 @@ r.delete("/delete/website/:website_id", async (c) => {
     await eraseWebsiteAnalytics(website.id);
     return c.json({ success: true, message: "Website analytics data erased" });
   } catch {
-    return c.json({ error: "Could not erase data safely; no database records were removed" }, 503);
+    return c.json({ error: "Could not complete data erasure safely; retry the request" }, 503);
   }
 });
 
@@ -128,7 +128,7 @@ r.delete("/delete/:user_id", async (c) => {
     for (const website of websites) await eraseWebsiteAnalytics(website.id);
     return c.json({ success: true, message: "Analytics data erased" });
   } catch {
-    return c.json({ error: "Could not erase data safely; no database records were removed" }, 503);
+    return c.json({ error: "Could not complete data erasure safely; retry the request" }, 503);
   }
 });
 
