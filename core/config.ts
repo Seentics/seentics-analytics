@@ -11,6 +11,29 @@ function parseIntEnv(v: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
 }
 
+const KNOWN_INSECURE_SECRETS = new Set([
+  "your-super-secret-jwt-key--must-be-32-characters",
+  "your-super-secret-jwt-key-change-this-in-production",
+  "your-refresh-secret-key-here-make-it-different-from-jwt-secret",
+  "dev-global-api-key",
+  "your-global-api-key-for-service-communication",
+]);
+
+function requireProductionSecret(name: string, value: string): void {
+  if (value.length < 32 || KNOWN_INSECURE_SECRETS.has(value)) {
+    throw new Error(`${name} must be a unique value of at least 32 characters in production`);
+  }
+}
+
+function requireHttpsUrl(name: string, value: string): void {
+  try {
+    if (new URL(value).protocol === "https:") return;
+  } catch {
+    // Give the same actionable error for a malformed URL.
+  }
+  throw new Error(`${name} must be an https URL in production`);
+}
+
 export type AppConfig = ReturnType<typeof env>;
 
 export function env() {
@@ -19,7 +42,7 @@ export function env() {
 
   const jwtSecret = process.env.JWT_SECRET ?? "";
   const globalApiKey = process.env.GLOBAL_API_KEY ?? "";
-  const environment = process.env.ENVIRONMENT ?? process.env.NODE_ENV ?? "development";
+  const environment = (process.env.ENVIRONMENT ?? process.env.NODE_ENV ?? "development").trim().toLowerCase();
   const isProduction = environment === "production";
 
   const bucket = process.env.S3_BUCKET_REPLAYS ?? process.env.S3_BUCKET ?? "seentics-replays";
@@ -58,9 +81,24 @@ export function env() {
 // this much of a live session, which is an easy trade for replay.
 const replayChunkFlushMs = parseIntEnv(process.env.REPLAY_CHUNK_FLUSH_MS, 30_000);
 
-  const corsAllowedOrigins =
-    process.env.CORS_ALLOWED_ORIGINS ??
+  const configuredCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "").trim();
+  const corsAllowedOrigins = configuredCorsOrigins ||
     "http://localhost:3000,http://127.0.0.1:3000,https://www.seentics.com,https://seentics.com";
+
+  if (isProduction) {
+    requireProductionSecret("JWT_SECRET", jwtSecret);
+    requireProductionSecret("GLOBAL_API_KEY", globalApiKey);
+    if (!configuredCorsOrigins || configuredCorsOrigins === "*") {
+      throw new Error("CORS_ALLOWED_ORIGINS must list explicit dashboard origins in production");
+    }
+    if (!endpoint || !accessKey || !secretKey) {
+      throw new Error("S3_ENDPOINT, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY are required in production");
+    }
+    if (!s3PublicEndpoint) {
+      throw new Error("S3_PUBLIC_ENDPOINT is required in production so replay and heatmap URLs reach browsers");
+    }
+    requireHttpsUrl("S3_PUBLIC_ENDPOINT", s3PublicEndpoint);
+  }
 
   const rateLimitEnabled = parseBool(process.env.RATE_LIMIT_ENABLED, true);
   const rateWindowMs = parseIntEnv(process.env.RATE_LIMIT_WINDOW_MS, 60_000);

@@ -2,3 +2,5 @@ node_modules
 tmp
 .git
 *.md
+.env
+.env.*

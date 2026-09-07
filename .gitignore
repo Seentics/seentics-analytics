@@ -48,6 +48,7 @@ docker-compose.override.yml
 docker-compose.prod.yml
 docker-compose.production.yml
 docker-compose.staging.yml
+!docker-compose.production.yml
 
 # Production deployment scripts
 run-production.sh

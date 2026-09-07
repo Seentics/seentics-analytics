@@ -1,173 +1,107 @@
-# Deployment Guide: Seentics Analytics on AWS EC2
+# Production deployment
 
-This guide will help you set up an AWS EC2 instance to host your application using Docker and configure automatic deployment via GitHub Actions.
+Seentics ships a production Compose stack in `docker-compose.production.yml`. It
+keeps Postgres, MinIO, and the core API on a private Docker network; Caddy is the
+only service that listens on the host (ports 80 and 443). Dashboard API calls stay
+same-origin through the Next.js server, while a separate TLS hostname serves only
+signed replay and heatmap objects from MinIO.
 
-## Prerequisites
-- An AWS Account
-- A GitHub Repository for this project
-- Domain name (optional but recommended for SSL/production)
+Do not use `docker-compose.yml` for a public deployment. It is deliberately a
+live-reload local-development stack with sample credentials and published service
+ports.
 
-## Step 1: Launch AWS EC2 Instance
+## Before deployment
 
-1.  **Login to AWS Console** and go to **EC2 Dashboard**.
-2.  **Launch Instance**:
-    *   **Name**: Seentics Analytics
-    *   **AMI**: Amazon Linux 2023 or Ubuntu 22.04 LTS (Ubuntu is recommended for easier Docker setup).
-    *   **Instance Type**: `t3.medium` (4GB RAM is sufficient for this stack).
-    *   **Key Pair**: Create a new key pair (e.g., `seentics-key`), download the `.pem` file, and keep it safe.
-    *   **Network Settings**: Allow SSH traffic from anywhere (0.0.0.0/0) or just your IP. Allow HTTP (80) and HTTPS (443). Also open ports `3000` (Frontend) and `3002` (Backend) in the Security Group if you aren't using a reverse proxy yet. For production, it's best to use a reverse proxy (Nginx) to route 80/443 to your containers, but for now opening ports works.
-        *   Security Group Inbound Rules:
-            *   SSH (22)
-            *   HTTP (80)
-            *   HTTPS (443)
-3.  **Launch** the instance.
+1. Create two DNS `A`/`AAAA` records pointing at the server:
+   - `APP_DOMAIN`, such as `analytics.example.com`
+   - `STORAGE_DOMAIN`, such as `storage.analytics.example.com`
+2. Allow only TCP 80 and 443 to the server. Restrict SSH to your administration
+   network. Do not expose 3000, 8080, 9000, 9001, or 5432.
+3. Install Docker Engine and the Docker Compose plugin on a supported Linux host.
+4. Copy `deploy/production.env.example` to a location outside the checkout (for
+   example `/etc/seentics/production.env`), set owner-read-only permissions, and
+   replace every `REPLACE_…` value. Use distinct secrets generated with
+   `openssl rand -base64 48`.
+5. Replace every image value with an immutable tag or digest after reviewing it.
+   This is especially important for MinIO and its client; floating `latest` tags
+   are intentionally not accepted by the production Compose file.
 
-## Step 2: Install Docker on EC2
+## First deployment
 
-ssh into your instance:
-```bash
-chmod 400 path/to/seentics-key.pem
-ssh -i path/to/seentics-key.pem ubuntu@<your-ec2-public-ip>
-```
-
-Run the following commands to install Docker and Docker Compose (for Ubuntu):
+From the repository root:
 
 ```bash
-# Update packages
-sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg
+docker compose \
+  --env-file /etc/seentics/production.env \
+  -f docker-compose.production.yml \
+  config --quiet
 
-# Add Docker's official GPG key:
-sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-# Add the repository to Apt sources:
-echo \
-  "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-# Install Docker
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Allow 'ubuntu' user to run docker commands without sudo
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Verify installation
-docker compose version
+docker compose \
+  --env-file /etc/seentics/production.env \
+  -f docker-compose.production.yml \
+  up -d --build
 ```
 
-## Step 3: Setup Project on EC2
+The first command validates that all required deployment variables are present
+without starting anything. The API also refuses to start in production with
+placeholder/short secrets, wildcard or implicit dashboard CORS, missing storage
+credentials, or a non-HTTPS public storage URL.
 
-1.  **Generate SSH Key for GitHub**:
-    Inside your EC2 instance:
-    ```bash
-    ssh-keygen -t ed25519 -C "deploy@seentics"
-    # Press Enter for default location and no passphrase
-    cat ~/.ssh/id_ed25519.pub
-    ```
-2.  **Add Key to GitHub**:
-    *   Go to your GitHub Repo -> **Settings** -> **Deploy Keys** -> **Add deploy key**.
-    *   Title: "AWS EC2"
-    *   Paste the key from the previous step.
-    *   **CHECK "Allow write access" is NOT needed (read-only is fine), but uncheck it.**
-3.  **Clone the Repository**:
-    ```bash
-    cd ~
-    git clone git@github.com:skshohagmiah/seentics-analytics.git
-    # Use your actual repo URL
-    ```
-    *Note: If `git clone` fails with permission denied, make sure you added the Deploy Key correctly.*
-
-## Step 4: Configure GitHub Secrets
-
-Go to your GitHub Repo -> **Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret**. Add the following:
-
-| Secret Name | Value | Description |
-| :--- | :--- | :--- |
-| `EC2_HOST` | `<your-ec2-public-ip>` | The Public IP of your EC2 instance. |
-| `EC2_USER` | `ubuntu` | The user you use to SSH (usually `ubuntu` or `ec2-user`). |
-| `EC2_SSH_KEY` | Content of your `.pem` file | The private key you downloaded when creating the EC2 instance. Paste the ENTIRE content including `-----BEGIN RSA PRIVATE KEY-----`. |
-| `POSTGRES_USER` | `seentics` | Database username. |
-| `POSTGRES_PASSWORD` | `<secure-password>` | Generate a strong password. |
-| `POSTGRES_DB` | `seentics_analytics` | Database name. |
-| `JWT_SECRET` | `<secure-random-string>` | Secret for JWT tokens. |
-| `GLOBAL_API_KEY` | `<secure-random-string>` | API Key for internal services. |
-| `NEXT_PUBLIC_API_URL` | `http://<your-ec2-public-ip>:3002` | **Important**: Use your EC2 IP or Domain. This is baked into the frontend build. |
-
-## Step 5: Setup SSL (First Time Only)
-
-1.  **Point your Domain**: Ensure `api.seentics.com` points to your EC2 IP address in your DNS provider (e.g., Godaddy, Namecheap, Cloudflare).
-2.  **SSH into EC2**:
-    ```bash
-    ssh -i path/to/seentics-key.pem ubuntu@<your-ec2-public-ip>
-    cd ~/seentics-analytics
-    ```
-3.  **Run Initialization Script**:
-    ```bash
-    sudo ./init-letsencrypt.sh
-    ```
-    This script will:
-    *   Generate self-signed certificates to let Nginx start.
-    *   Start Nginx.
-    *   Request real certificates from Let's Encrypt for `api.seentics.com`.
-    *   Reload Nginx with the new valid certificates.
-
-## Step 6: Configure Frontend on Vercel
-
-1.  Go to your project on **Vercel**.
-2.  Navigate to **Settings** -> **Environment Variables**.
-3.  Add or Update `NEXT_PUBLIC_API_URL`:
-    *   Key: `NEXT_PUBLIC_API_URL`
-    *   Value: `https://api.seentics.com`
-4.  **Redeploy** your frontend on Vercel for the changes to take effect.
-
-## Step 7: Automated Deployment
-
-1.  Push your changes (including the new `.github/workflows/deploy.yml` and `docker-compose.yml` updates) to the `main` branch.
-2.  Go to the **Actions** tab in GitHub to see the deployment running.
-3.  Once finished, your backend will be live at `https://api.seentics.com`.
-
-## Troubleshooting
-
-### 1. "Database does not exist" Error
-If you see logs like `FATAL: database "seentics_analytics" does not exist`, it means the Postgres volume was created before the correct configuration was applied. To fix this (WARNING: This deletes all data):
+Caddy obtains and renews certificates automatically once both DNS records resolve
+to the host and ports 80/443 are reachable. Check readiness with:
 
 ```bash
-# Stop containers and remove volumes
-docker compose down -v
-
-# Restart containers
-docker compose up -d --build
+docker compose --env-file /etc/seentics/production.env -f docker-compose.production.yml ps
+curl -fsS https://analytics.example.com/api/v1/health
 ```
 
-### 2. "Network Error" or Timeout on Frontend
-If `api.seentics.com` times out:
-1.  **Check Security Groups**: Ensure your AWS Security Group allows Inbound traffic on ports **80** and **443** from `0.0.0.0/0`.
-2.  **Check Nginx Status**:
-    ```bash
-    docker compose logs nginx
-    ```
-    If Nginx isn't running, your SSL certificates might be missing. Run `./init-letsencrypt.sh` again.
+## Operations
 
-### 3. "No such service: nginx/certbot"
-If you see this error, your `docker-compose.yml` is outdated. Pull the latest code:
+Use the same `--env-file` and `-f docker-compose.production.yml` arguments for
+every command.
+
 ```bash
-git pull origin main
+# Follow structured core logs
+docker compose --env-file /etc/seentics/production.env -f docker-compose.production.yml logs -f api
+
+# Upgrade from a reviewed revision; make a database backup first.
+git fetch --tags origin
+git checkout <reviewed-tag-or-commit>
+docker compose --env-file /etc/seentics/production.env -f docker-compose.production.yml up -d --build
+
+# Inspect resource use
+docker stats
 ```
 
-## Logs & Monitoring
+The API runs its tracked SQL migrations during startup. Back up Postgres before
+every upgrade and rehearse restore on a separate host. `AUTO_DB_PUSH` remains off
+in production by default: do not use Drizzle schema push as a substitute for a
+reviewed migration.
 
-- **Logs**:
-    ```bash
-    # On EC2
-    cd ~/seentics-analytics
-    docker compose logs -f
-    ```
-- **Resources**:
-    ```bash
-    docker stats
-    ```
+## Backups and retention
+
+Back up both persistent volumes:
+
+- `postgres-data` contains accounts, website configuration, and analytics metadata.
+- `minio-data` contains replay chunks and heatmap layout snapshots.
+
+Use your platform's encrypted volume snapshots or a scheduled logical Postgres
+backup plus object-storage replication. Test a restore regularly. Configure data
+retention to match your privacy policy; replay and heatmap objects can contain
+customer interaction data even though tracker masking is enabled.
+
+## External S3 instead of MinIO
+
+The included MinIO service is suitable for a single-host deployment. For managed
+object storage, remove `minio` and `createbuckets`, set `S3_ENDPOINT`,
+`S3_PUBLIC_ENDPOINT`, bucket, region, and least-privilege credentials on `api`, and
+ensure the public endpoint is HTTPS and reachable from browsers. Keep the bucket
+private: replay and heatmap access is granted through short-lived presigned URLs.
+
+## Incident checklist
+
+1. Rotate `JWT_SECRET`, `GLOBAL_API_KEY`, database credentials, and object-store
+   credentials if they may have been exposed.
+2. Revoke affected user sessions by rotating the JWT secret.
+3. Review Caddy and API logs, preserving them according to your incident policy.
+4. Verify backups and object-storage access policies before restoring service.

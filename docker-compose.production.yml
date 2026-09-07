@@ -1,0 +1,153 @@
+# Production-only stack. Copy deploy/production.env.example to a secure location,
+# replace every value, then run:
+# docker compose --env-file /secure/path/seentics.production.env -f docker-compose.production.yml up -d --build
+#
+# The API, Postgres, and MinIO are deliberately not published to the host. Caddy is
+# the only public entry point (80/443); dashboard API calls are same-origin through
+# Next.js rewrites. Set the image variables to immutable tags or digests before use.
+services:
+  caddy:
+    image: ${CADDY_IMAGE:?Set CADDY_IMAGE to a pinned Caddy image or digest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
+      STORAGE_DOMAIN: ${STORAGE_DOMAIN:?Set STORAGE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks: [public, private]
+    security_opt: [no-new-privileges:true]
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        API_GATEWAY_URL: http://api:8080
+        NEXT_PUBLIC_API_URL: /api/v1
+        NEXT_PUBLIC_IS_ENTERPRISE: ${NEXT_PUBLIC_IS_ENTERPRISE:-false}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_GATEWAY_URL: http://api:8080
+    expose: ["3000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [private]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/signin').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  api:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      GLOBAL_API_KEY: ${GLOBAL_API_KEY:?Set GLOBAL_API_KEY}
+      CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN}
+      TRUST_PROXY: "true"
+      RATE_LIMIT_ENABLED: "true"
+      ANALYTICS_CACHE_ENABLED: "true"
+      LOG_LEVEL: info
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: https://${STORAGE_DOMAIN:?Set STORAGE_DOMAIN}
+      S3_BUCKET_REPLAYS: ${S3_BUCKET_REPLAYS:-seentics-replays}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      DATA_RETENTION_ENABLED: "true"
+    expose: ["8080"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
+    networks: [private]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 60s
+
+  postgres:
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to a pinned PostgreSQL image or digest}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [private]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  minio:
+    image: ${MINIO_IMAGE:?Set MINIO_IMAGE to a pinned MinIO image or digest}
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes: [minio-data:/data]
+    networks: [private]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  createbuckets:
+    image: ${MINIO_MC_IMAGE:?Set MINIO_MC_IMAGE to a pinned MinIO Client image or digest}
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mc alias set seentics http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "seentics/$$S3_BUCKET_REPLAYS"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      S3_BUCKET_REPLAYS: ${S3_BUCKET_REPLAYS:-seentics-replays}
+    networks: [private]
+    security_opt: [no-new-privileges:true]
+
+volumes:
+  postgres-data:
+  minio-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  public:
+  private:
+    internal: true

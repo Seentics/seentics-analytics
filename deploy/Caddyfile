@@ -1,0 +1,42 @@
+{
+  email {$ACME_EMAIL}
+  admin off
+}
+
+{$APP_DOMAIN} {
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Frame-Options "DENY"
+    Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+    -Server
+  }
+  reverse_proxy web:3000
+}
+
+# Replay chunks and heatmap layout snapshots use S3 presigned URLs. This separate
+# hostname keeps object storage private to the Docker network while allowing only
+# signed browser reads through TLS.
+{$STORAGE_DOMAIN} {
+  encode zstd gzip
+  @preflight method OPTIONS
+  handle @preflight {
+    header {
+      Access-Control-Allow-Origin "https://{$APP_DOMAIN}"
+      Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+      Access-Control-Allow-Headers "Range, Content-Type"
+      Access-Control-Max-Age "86400"
+      Vary "Origin"
+    }
+    respond "" 204
+  }
+  header {
+    Access-Control-Allow-Origin "https://{$APP_DOMAIN}"
+    Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    Vary "Origin"
+    -Server
+  }
+  reverse_proxy minio:9000
+}

@@ -1,0 +1,13 @@
+# Never send local dependencies, credentials, or generated test/build output to a
+# production Docker build. Besides making builds faster, this prevents host-native
+# modules from replacing the Linux dependencies installed in the image.
+node_modules
+.next
+.env
+.env.*
+.git
+playwright-report
+test-results
+coverage
+*.log
+e2e

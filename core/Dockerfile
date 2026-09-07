@@ -26,12 +26,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json bun.lock* ./
-RUN bun install && bun add openai
-# Explicitly download Playwright's Chromium (bun doesn't run post-install scripts)
+COPY package.json bun.lock ./
+# A locked install makes the image reproducible. `bun add` in a Docker build used
+# to mutate the dependency graph independently of the committed lockfile.
+RUN bun install --frozen-lockfile
+# Explicitly download Playwright's Chromium (bun doesn't run post-install scripts).
 RUN ./node_modules/.bin/playwright install chromium
+# Keep the runtime browser path outside `/root` because the production API process
+# runs as `seentics`; drop the root-owned copy to avoid carrying it twice.
+RUN mkdir -p /ms-playwright \
+    && cp -a /root/.cache/ms-playwright/. /ms-playwright/ \
+    && rm -rf /root/.cache/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY . .
+
+# The API listens on an unprivileged port and has no reason to run as root.
+RUN groupadd --system --gid 10001 seentics \
+    && useradd --system --uid 10001 --gid seentics --create-home seentics \
+    && chown -R seentics:seentics /app /ms-playwright
+USER seentics
 
 EXPOSE 3002
 ENV PORT=3002
