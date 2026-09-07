@@ -131,6 +131,7 @@ export function createTrackerRoutes(deps: {
     if (!website || !website.is_active) {
       return c.json({ error: "website not found or inactive" }, 404);
     }
+
     if (!validateOriginDomain(origin, website.url, cfg.environment)) {
       return c.json({ error: "domain mismatch" }, 403);
     }
@@ -236,6 +237,14 @@ export function createTrackerRoutes(deps: {
     const origin = originFromRequest(c.req.raw.headers);
     if (!validateOriginDomain(origin, website.url, cfg.environment)) {
       return c.json({ error: "domain mismatch" }, 403);
+    }
+
+    // Enforce the saved policy on the server too: a modified tracker script must not
+    // bypass a browser DNT signal or a site's explicit-consent requirement.
+    const consentGranted = (body as Record<string, unknown>).consent === true;
+    if ((website.respect_dnt && c.req.header("DNT") === "1") ||
+      (website.consent_mode === "strict" && !consentGranted)) {
+      return c.json({ status: "ok", message: "tracking disabled by privacy policy" }, 200);
     }
 
     // Prefer the HTTP User-Agent header. Fallback to navigator.userAgent embedded in the payload

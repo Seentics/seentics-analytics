@@ -96,6 +96,15 @@ const ALLOWED: { file: string; tables: string[]; why: string }[] = [
       "trips on the goals dashboard. `goals` is genuinely shared: websites owns the " +
       "CRUD, analytics owns the aggregation.",
   },
+  {
+    file: "platform/http/privacy.ts",
+    tables: ["websites", "goals", "analytics_events", "funnels", "automations", "automation_events", "user_profiles", "session_replays", "heatmap_points", "heatmap_page_snapshots"],
+    why:
+      "Data-subject export and erasure are cross-cutting legal operations. They must verify " +
+      "website ownership, export a consistent data scope, remove storage objects before their " +
+      "database pointers, and delete relational rows in one transaction. Splitting that work " +
+      "across module ports cannot preserve the required all-or-safe-failure semantics.",
+  },
 ];
 
 function sourceFiles(dir: string): string[] {

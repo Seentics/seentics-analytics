@@ -52,8 +52,11 @@ export async function resolveWebsiteForTracker(
           replay_sampling_rate,
           replay_include_patterns,
           replay_exclude_patterns,
-          automation_enabled
+          automation_enabled,
+          COALESCE(privacy.respect_dnt, false) AS respect_dnt,
+          COALESCE(privacy.consent_mode, 'cookieless') AS consent_mode
         FROM websites
+        LEFT JOIN website_privacy_settings privacy ON privacy.site_id = websites.id::text
         WHERE id = ${p}::uuid LIMIT 1
       `
     : await sql<WebsiteTrackerRow[]>`
@@ -71,8 +74,11 @@ export async function resolveWebsiteForTracker(
           replay_sampling_rate,
           replay_include_patterns,
           replay_exclude_patterns,
-          automation_enabled
+          automation_enabled,
+          COALESCE(privacy.respect_dnt, false) AS respect_dnt,
+          COALESCE(privacy.consent_mode, 'cookieless') AS consent_mode
         FROM websites
+        LEFT JOIN website_privacy_settings privacy ON privacy.site_id = websites.id::text
         WHERE website_id = ${p}
         LIMIT 1
       `;
@@ -111,6 +117,8 @@ export async function buildPublicTrackerConfig(
     replay_exclude_patterns: w.replay_exclude_patterns,
     heatmap_enabled: w.heatmap_enabled,
     heatmap_layout_enabled: w.heatmap_layout_enabled,
+    respect_dnt: w.respect_dnt,
+    consent_mode: w.consent_mode,
   };
   if (w.heatmap_include_patterns) {
     out.heatmap_include_patterns = w.heatmap_include_patterns;

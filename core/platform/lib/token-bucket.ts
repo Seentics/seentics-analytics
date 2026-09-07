@@ -8,6 +8,7 @@ type Bucket = {
 };
 
 const buckets = new Map<string, Bucket>();
+const MAX_BUCKETS = 100_000;
 
 function refill(b: Bucket, now: number): void {
   if (b.windowMs <= 0) return;
@@ -23,6 +24,9 @@ export function takeRateToken(key: string, limit: number, windowMs: number): Rat
   const now = Date.now();
   let b = buckets.get(key);
   if (!b || b.limit !== limit || b.windowMs !== windowMs) {
+    // Public tracker and auth paths can receive arbitrary client keys. Keep the
+    // process-local limiter bounded between periodic sweeps under an IP-cardinality flood.
+    if (!b && buckets.size >= MAX_BUCKETS) buckets.delete(buckets.keys().next().value!);
     b = { tokens: limit, lastRefillMs: now, limit, windowMs };
     buckets.set(key, b);
   }

@@ -190,6 +190,12 @@ seentics.page();`}
           See <Link href="/docs/privacy" className="text-primary hover:underline">Privacy &amp;
           security</Link> for what is stored.
         </Callout>
+        <P>
+          When a site uses <strong>Strict</strong> consent mode, the tracker stays off until consent is
+          granted. Set <C>data-consent=&quot;granted&quot;</C> on the script tag after your consent manager
+          has approval, or set <C>window.seenticsConsent = true</C> before loading the tracker. The
+          tracker also honors browser Do-Not-Track when that setting is enabled for the site.
+        </P>
       </DocSection>
 
       <DocSection title="Excluding elements from recordings">

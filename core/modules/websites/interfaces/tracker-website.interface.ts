@@ -22,6 +22,9 @@ export type WebsiteTrackerRow = {
   replay_include_patterns: string | null;
   replay_exclude_patterns: string | null;
   automation_enabled: boolean;
+  /** Public privacy policy, resolved with the website and cached on the tracker hot path. */
+  respect_dnt: boolean;
+  consent_mode: "cookieless" | "strict";
 };
 
 /** A selector-based event goal, as `/tracker/init` sends it. */

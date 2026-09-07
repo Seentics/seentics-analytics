@@ -90,6 +90,8 @@ const ACTIVE_WEBSITE: WebsiteTrackerRow = {
   replay_include_patterns: null,
   replay_exclude_patterns: null,
   automation_enabled: true,
+  respect_dnt: false,
+  consent_mode: "cookieless",
 };
 
 /**
@@ -390,6 +392,34 @@ describe("POST /collect", () => {
       body: JSON.stringify({ website_id: "site_abc", events: [{ type: "pageview" }] }),
     });
     expect(res.status).toBe(403);
+  });
+
+  it("does not enqueue when the site honors a browser DNT signal", async () => {
+    mockResolveWebsite.mockResolvedValue({ ...ACTIVE_WEBSITE, respect_dnt: true });
+    const res = await app.request("/collect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", DNT: "1" },
+      body: JSON.stringify({ website_id: "site_abc", events: [{ type: "pageview" }] }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json() as { message: string }).message).toBe("tracking disabled by privacy policy");
+    expect(mockHandleEvents).not.toHaveBeenCalled();
+  });
+
+  it("requires an explicit consent flag for strict sites", async () => {
+    mockResolveWebsite.mockResolvedValue({ ...ACTIVE_WEBSITE, consent_mode: "strict" });
+    const denied = await app.request("/collect", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ website_id: "site_abc", events: [{ type: "pageview" }] }),
+    });
+    expect((await denied.json() as { message: string }).message).toBe("tracking disabled by privacy policy");
+
+    const allowed = await app.request("/collect", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ website_id: "site_abc", consent: true, events: [{ type: "pageview" }] }),
+    });
+    expect(allowed.status).toBe(200);
+    expect(mockHandleEvents).toHaveBeenCalledTimes(1);
   });
 
   it("returns 200 and enqueues events for a valid collect payload", async () => {
@@ -695,4 +725,3 @@ describe("POST /automations/evaluate", () => {
     expect(res.status).toBe(500);
   });
 });
-

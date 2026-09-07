@@ -112,6 +112,15 @@ let funnels     = [];
 let automations = [];
 let flushInterval = null;
 
+/** A strict site needs an explicit signal from its CMP or script tag before tracking. */
+const consentGranted = () =>
+  script?.getAttribute('data-consent') === 'granted' || window.seenticsConsent === true;
+
+const trackingAllowed = () => {
+  if (cfg.respect_dnt === true && navigator.doNotTrack === '1') return false;
+  return cfg.consent_mode !== 'strict' || consentGranted();
+};
+
 /**
  * The set of trigger types any loaded automation listens for.
  *
@@ -320,7 +329,7 @@ const drainQueues = () => {
     return null;
   }
 
-  const payload = { website_id: websiteId, domain, ua: navigator.userAgent };
+  const payload = { website_id: websiteId, domain, ua: navigator.userAgent, consent: consentGranted() };
   if (events.length)            payload.events               = events;
   if (funnelEvts.length)        payload.funnels              = funnelEvts;
   if (autoEvts.length)          payload.automations          = autoEvts;
@@ -2051,6 +2060,11 @@ const init = () => {
       funnels     = data.funnels     ?? [];
       automations = data.automations ?? [];
       indexAutomationTriggers();
+
+      if (!trackingAllowed()) {
+        console.info('[Seentics] tracking disabled by the site privacy policy.');
+        return;
+      }
 
       if (autoTrack) trackPage();
 

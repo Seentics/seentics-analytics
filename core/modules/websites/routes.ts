@@ -27,6 +27,7 @@ import type {
 } from "./interfaces";
 import { toUpdateWebsiteInput } from "./lib/patch-mapping";
 import { presentWebsite, presentWebsites } from "./lib/website-presenter";
+import { sql } from "../../db";
 
 /**
  * HTTP surface for websites, mounted at `/api/v1/websites`.
@@ -340,28 +341,79 @@ export function createWebsiteRoutes(deps: {
     }
   });
 
-  // ─── Stubs the dashboard calls ────────────────────────────────────────────
-  // Present so the client gets a shaped answer rather than a 404; unimplemented
-  // server-side. Preserved verbatim from the previous router.
+  // ─── Per-website privacy settings ─────────────────────────────────────────
 
-  /*
-   * Per-website privacy settings, not implemented.
-   *
-   * These returned `{ settings: {} }` and `{ ok: true }` — a PUT that stored nothing and
-   * reported success, so a caller had no way to tell the setting had not been saved.
-   * 501 for the same reason as `platform/http/privacy.ts`.
-   */
-  const privacyNotImplemented = (c: Context<{ Variables: AuthVars }>) =>
-    c.json(
-      {
-        error: "Per-website privacy settings are not implemented",
-        code: "not_implemented",
-      },
-      501,
-    );
+  type PrivacySettings = {
+    ipAnonymization: "none" | "partial" | "full";
+    respectDnt: boolean;
+    consentMode: "cookieless" | "strict";
+    dataRetentionDays: number | null;
+  };
+  const defaultPrivacy: PrivacySettings = {
+    ipAnonymization: "none", respectDnt: false, consentMode: "cookieless", dataRetentionDays: null,
+  };
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  r.get("/:websiteId/privacy", privacyNotImplemented);
-  r.put("/:websiteId/privacy", privacyNotImplemented);
+  async function ownedPrivacyWebsite(websiteId: string, userId: string): Promise<boolean> {
+    if (!UUID_RE.test(websiteId)) return false;
+    const rows = await sql`SELECT 1 FROM websites WHERE id = ${websiteId}::uuid AND user_id = ${userId}::uuid LIMIT 1`;
+    return rows.length === 1;
+  }
+
+  function presentPrivacy(row: {
+    ip_anonymization: PrivacySettings["ipAnonymization"];
+    respect_dnt: boolean;
+    consent_mode: PrivacySettings["consentMode"];
+    data_retention_days: number | null;
+  } | undefined): PrivacySettings {
+    if (!row) return defaultPrivacy;
+    return {
+      ipAnonymization: row.ip_anonymization,
+      respectDnt: row.respect_dnt,
+      consentMode: row.consent_mode,
+      dataRetentionDays: row.data_retention_days,
+    };
+  }
+
+  r.get("/:websiteId/privacy", async (c) => {
+    const userId = requireUser(c);
+    if (!userId) return c.json({ error: "unauthorized" }, 401);
+    const websiteId = param(c, "websiteId");
+    if (!await ownedPrivacyWebsite(websiteId, userId)) return c.json({ error: "website not found" }, 404);
+    const rows = await sql<[{ ip_anonymization: PrivacySettings["ipAnonymization"]; respect_dnt: boolean; consent_mode: PrivacySettings["consentMode"]; data_retention_days: number | null }?]>`
+      SELECT ip_anonymization, respect_dnt, consent_mode, data_retention_days
+      FROM website_privacy_settings WHERE site_id = ${websiteId} AND user_id = ${userId}::uuid LIMIT 1
+    `;
+    return c.json({ success: true, data: presentPrivacy(rows[0]) });
+  });
+
+  r.put("/:websiteId/privacy", async (c) => {
+    const userId = requireUser(c);
+    if (!userId) return c.json({ error: "unauthorized" }, 401);
+    const websiteId = param(c, "websiteId");
+    if (!await ownedPrivacyWebsite(websiteId, userId)) return c.json({ error: "website not found" }, 404);
+    const body = await c.req.json<Partial<PrivacySettings>>().catch(() => null);
+    const ip = body?.ipAnonymization;
+    const consent = body?.consentMode;
+    const retention = body?.dataRetentionDays;
+    if (!body || (ip != null && !["none", "partial", "full"].includes(ip)) ||
+      (consent != null && !["cookieless", "strict"].includes(consent)) ||
+      (retention != null && (!Number.isInteger(retention) || retention < 1 || retention > 3650)) ||
+      (body.respectDnt != null && typeof body.respectDnt !== "boolean")) {
+      return c.json({ error: "invalid privacy settings" }, 400);
+    }
+    const next = { ...defaultPrivacy, ...body };
+    const rows = await sql<[{ ip_anonymization: PrivacySettings["ipAnonymization"]; respect_dnt: boolean; consent_mode: PrivacySettings["consentMode"]; data_retention_days: number | null }]>`
+      INSERT INTO website_privacy_settings (site_id, user_id, ip_anonymization, respect_dnt, consent_mode, data_retention_days)
+      VALUES (${websiteId}, ${userId}::uuid, ${next.ipAnonymization}, ${next.respectDnt}, ${next.consentMode}, ${next.dataRetentionDays})
+      ON CONFLICT (site_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id, ip_anonymization = EXCLUDED.ip_anonymization,
+        respect_dnt = EXCLUDED.respect_dnt, consent_mode = EXCLUDED.consent_mode,
+        data_retention_days = EXCLUDED.data_retention_days, updated_at = NOW()
+      RETURNING ip_anonymization, respect_dnt, consent_mode, data_retention_days
+    `;
+    return c.json({ success: true, data: presentPrivacy(rows[0]) });
+  });
 
   // API keys are not here: `api_keys` is a platform-owned table, and the real surface
   // lives in `platform/public-api/keys/routes.ts`, mounted at these same paths.

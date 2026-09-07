@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,7 +28,6 @@ import {
   EyeOff,
   Cookie,
   Download,
-  Upload,
   Trash2,
   AlertTriangle,
   Loader2,
@@ -46,7 +45,7 @@ import {
   RefreshCw,
   Database,
 } from 'lucide-react';
-import { privacyAPI, WebsitePrivacySettings, GDPRRequestItem, ImportResult } from '@/lib/privacy-api';
+import { privacyAPI, WebsitePrivacySettings, GDPRRequestItem } from '@/lib/privacy-api';
 import { useAuth } from '@/stores/useAuthStore';
 import { isEnterprise } from '@/lib/features';
 import { toast } from 'sonner';
@@ -120,12 +119,9 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
   // --- Shared state ---
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingWebsite, setIsExportingWebsite] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- OSS: local privacy toggles ---
   const [ipAnonymization, setIpAnonymization] = useState(true);
@@ -253,35 +249,6 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
     }
   };
 
-  // Import data from file
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !websiteId) return;
-
-    if (!file.name.endsWith('.json')) {
-      toast.error('Please select a JSON file.');
-      return;
-    }
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error('File too large. Maximum size is 100MB.');
-      return;
-    }
-
-    try {
-      setIsImporting(true);
-      setImportResult(null);
-      const result = await privacyAPI.importWebsiteData(websiteId, file);
-      setImportResult(result.data);
-      toast.success('Data imported successfully.');
-    } catch {
-      toast.error('Failed to import data. Check the file format.');
-    } finally {
-      setIsImporting(false);
-      // Reset file input
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const handleDelete = async () => {
     if (!websiteId && !user?.id) return;
     try {
@@ -309,17 +276,6 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
       toast.success('Request cancelled.');
     } catch {
       toast.error('Failed to cancel request.');
-    }
-  };
-
-  const handleAnonymize = async () => {
-    if (!user?.id) return;
-    if (!window.confirm('This will anonymize all visitor data associated with your account. This cannot be undone.')) return;
-    try {
-      await privacyAPI.anonymizeAnalyticsData(user.id);
-      toast.success('Data anonymization started. This may take a few minutes.');
-    } catch {
-      toast.error('Failed to anonymize data.');
     }
   };
 
@@ -495,7 +451,7 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
                     placeholder="Plan default"
                     className="h-9 text-sm"
                   />
-                  <p className="text-[10px] text-muted-foreground">Leave empty to use your plan&apos;s default retention period.</p>
+                  <p className="text-[10px] text-muted-foreground">Leave empty to use the deployment&apos;s default retention period.</p>
                 </div>
               </div>
 
@@ -510,11 +466,11 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
         )}
       </div>
 
-      {/* ====== Data Export & Import ====== */}
+      {/* ====== Data Export ====== */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 px-1">
           <Database className="h-3.5 w-3.5 text-muted-foreground" />
-          <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Data Export & Import</h4>
+          <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Data Export</h4>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -576,63 +532,7 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
             </Card>
           )}
 
-          {/* Import Data */}
-          {websiteId && (
-            <Card className="border-border bg-card hover:shadow-md transition-shadow">
-              <CardContent className="p-5 flex flex-col h-full">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <Upload className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold">Import Data</h4>
-                    <p className="text-[10px] text-muted-foreground">Restore from export</p>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mb-4 leading-relaxed flex-1">
-                  Import analytics data from a previously exported JSON file into this website. Supports events, sessions, goals, and funnels.
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleImport}
-                  className="hidden"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isImporting}
-                  className="w-full gap-1.5 text-xs font-semibold"
-                >
-                  {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                  {isImporting ? 'Importing...' : 'Import JSON'}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
-
-        {/* Import result summary */}
-        {importResult && (
-          <Card className="border-emerald-500/30 bg-emerald-500/5">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Import Complete</p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {Object.entries(importResult).map(([key, count]) => (
-                  <div key={key} className="text-center">
-                    <p className="text-lg font-bold">{count}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider capitalize">{key}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* ====== Data Actions ====== */}
@@ -642,35 +542,7 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
           <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Data Actions</h4>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-3">
-          {/* Anonymize */}
-          <Card className="border-border bg-card hover:shadow-md transition-shadow">
-            <CardContent className="p-5 flex flex-col h-full">
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                  <Fingerprint className="h-4 w-4 text-amber-600" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold">Anonymize Data</h4>
-                  <p className="text-[10px] text-muted-foreground">Pseudonymize all records</p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4 leading-relaxed flex-1">
-                Replace all identifiable visitor data with anonymous hashes while preserving aggregate analytics.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleAnonymize}
-                disabled={!user?.id}
-                className="w-full gap-1.5 text-xs font-semibold"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Anonymize Data
-              </Button>
-            </CardContent>
-          </Card>
-
+        <div className="grid gap-3">
           {/* Delete */}
           <Card className="border-border bg-card hover:shadow-md transition-shadow">
             <CardContent className="p-5 flex flex-col h-full">
@@ -706,7 +578,7 @@ export function PrivacySettingsComponent({ websiteId }: PrivacySettingsProps) {
             <div>
               <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Irreversible Actions</p>
               <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                Anonymize and delete operations are processed immediately. Deletion removes all data including events, sessions, heatmaps, replays, goals, and funnels. Backup copies are purged within 30 days.
+                Deletion removes the stored analytics, heatmap, replay, funnel, and automation data for the selected scope. It is irreversible.
               </p>
             </div>
           </div>

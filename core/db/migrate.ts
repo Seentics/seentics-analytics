@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import postgres from 'postgres';
 import { ensureCoreSchema, ensureAnalyticsPartitions } from './ensure-schema';
 
 /**
- * Run all core analytics SQL migrations on every startup.
- * All files in db/sql/ are idempotent (IF NOT EXISTS / ON CONFLICT / DO blocks).
+ * Run each core analytics migration once, tracked by a checksum ledger.
  *
  * Order:
  *   1. Drizzle push — creates/updates core analytics tables (websites, analytics_events, …).
@@ -22,6 +22,14 @@ export async function runCoreMigrations(databaseUrl: string): Promise<void> {
   // 2. Core SQL migrations
   const sql = postgres(databaseUrl, { max: 1, connect_timeout: 15, onnotice: () => {} });
   try {
+    await sql.unsafe(`
+      CREATE TABLE IF NOT EXISTS core_schema_migrations (
+        filename TEXT PRIMARY KEY,
+        checksum TEXT NOT NULL,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await sql.unsafe('SELECT pg_advisory_lock(824631002)');
     const dir = join(import.meta.dir, 'sql');
     const files = readdirSync(dir)
       .filter((f) => f.endsWith('.sql'))
@@ -36,9 +44,24 @@ export async function runCoreMigrations(databaseUrl: string): Promise<void> {
       if (content.includes('CONCURRENTLY')) {
         content = content.replace(/\bCONCURRENTLY\b/g, '');
       }
-      await sql.unsafe(content);
+      const checksum = createHash('sha256').update(content).digest('hex');
+      const applied = await sql<{ checksum: string }[]>`
+        SELECT checksum FROM core_schema_migrations WHERE filename = ${filename}
+      `;
+      if (applied[0]) {
+        if (applied[0].checksum !== checksum) throw new Error(`Migration ${filename} was modified after being applied`);
+        continue;
+      }
+      await sql.begin(async (tx) => {
+        await tx.unsafe(content);
+        await tx`
+          INSERT INTO core_schema_migrations (filename, checksum)
+          VALUES (${filename}, ${checksum})
+        `;
+      });
     }
   } finally {
+    try { await sql.unsafe('SELECT pg_advisory_unlock(824631002)'); } catch { /* connection may not be established */ }
     await sql.end({ timeout: 5 });
   }
 

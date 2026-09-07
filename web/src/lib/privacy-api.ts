@@ -36,7 +36,7 @@ class PrivacyAPI {
     if (userId === 'demo') return { mock: 'data' };
     try {
       if (isEnterprise) {
-        const response = await api.get('/user/gdpr/export');
+        const response = await api.get(`/privacy/export/${userId}`);
         return response.data;
       }
       const response = await api.get(`/privacy/export/${userId}`);

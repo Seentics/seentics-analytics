@@ -41,6 +41,8 @@ function makeWebsite(overrides: Partial<WebsiteTrackerRow> = {}): WebsiteTracker
     replay_include_patterns: null,
     replay_exclude_patterns: null,
     automation_enabled: true,
+    respect_dnt: false,
+    consent_mode: "cookieless",
     ...overrides,
   };
 }

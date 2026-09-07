@@ -19,8 +19,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/dashboard-dark.png" />
-    <img src="assets/dashboard.png" alt="Seentics analytics overview — summary cards, traffic chart, top pages and traffic sources" width="100%" />
+    <source media="(prefers-color-scheme: dark)" srcset="web/public/assets/dashboard-dark.png" />
+    <img src="web/public/assets/dashboard.png" alt="Seentics analytics overview — summary cards, traffic chart, top pages and traffic sources" width="100%" />
   </picture>
 </p>
 
