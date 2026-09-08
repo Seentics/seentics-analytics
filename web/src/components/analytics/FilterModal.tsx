@@ -54,7 +54,7 @@ export interface AdvancedFilters {
   page_path?: string;
 }
 
-interface FilterModalProps {
+export interface FilterModalProps {
   dateRange: number;
   isCustomRange: boolean;
   customStartDate?: Date;
@@ -64,6 +64,9 @@ interface FilterModalProps {
   onFiltersChange?: (filters: AdvancedFilters) => void;
   activeFiltersCount?: number;
   currentFilters?: AdvancedFilters;
+  /** Optional controlled dialog state for embeds, tests, and content scenes. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 type ChipOption = {
@@ -336,14 +339,21 @@ export function FilterModal({
   onFiltersChange,
   activeFiltersCount = 0,
   currentFilters = {},
+  open,
+  onOpenChange,
 }: FilterModalProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    if (open === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
   const [draft, setDraft] = useState<AdvancedFilters>({});
 
   // Sync draft from applied filters each time the modal opens
   useEffect(() => {
-    if (open) setDraft(currentFilters);
-  }, [open]);
+    if (isOpen) setDraft(currentFilters);
+  }, [isOpen, currentFilters]);
 
   const advancedCount = Object.values(draft).filter(Boolean).length;
   const totalCount = activeFiltersCount;
@@ -375,7 +385,7 @@ export function FilterModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="outline"

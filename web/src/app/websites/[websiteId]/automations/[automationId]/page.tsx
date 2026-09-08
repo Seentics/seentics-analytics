@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -97,6 +97,7 @@ const ACTION_LABELS: Record<string, string> = {
 export default function AutomationDetailPage() {
   const params        = useParams();
   const router        = useRouter();
+  const searchParams  = useSearchParams();
   const websiteId     = params?.websiteId as string;
   const automationId  = params?.automationId as string;
 
@@ -114,6 +115,12 @@ export default function AutomationDetailPage() {
   const { mutate: remove, isPending: deleting } = useDeleteAutomation();
   const { mutate: update, isPending: saving }   = useUpdateAutomation();
   const { data: dailyStatsData } = useAutomationDailyStats(websiteId, automationId);
+
+  useEffect(() => {
+    if (websiteId !== 'demo' || searchParams.get('contentState') !== 'edit' || !automation) return;
+    setEditName(automation.name);
+    setEditMode(true);
+  }, [automation, searchParams, websiteId]);
 
   if (!automation && !isLoading) {
     return (

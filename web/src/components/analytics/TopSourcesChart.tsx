@@ -2,11 +2,12 @@
 
 import { Globe, Layers, MousePointerClick } from 'lucide-react';
 import Image from 'next/image';
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/lib/analytics-api';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useControllableState } from '@/hooks/useControllableState';
 
 interface TopSourcesChartProps {
   data?: {
@@ -18,8 +19,10 @@ interface TopSourcesChartProps {
     }>;
   };
   isLoading?: boolean;
-  onViewMore?: () => void;
   onFilter?: (filter: Record<string, string>) => void;
+  /** Optional controlled tab for deterministic recorded states. */
+  activeTab?: 'overview' | 'search' | 'social';
+  onActiveTabChange?: (tab: 'overview' | 'search' | 'social') => void;
 }
 
 const CategoryIcons: Record<string, { icon: React.ElementType; color: string }> = {
@@ -78,8 +81,18 @@ const getSourceImage = (label: string) => {
   return null;
 };
 
-export function TopSourcesChart({ data, isLoading, onViewMore, onFilter }: TopSourcesChartProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+export function TopSourcesChart({
+  data,
+  isLoading,
+  onFilter,
+  activeTab,
+  onActiveTabChange,
+}: TopSourcesChartProps) {
+  const [selectedTab, handleTabChange] = useControllableState({
+    value: activeTab,
+    defaultValue: 'overview' as const,
+    onChange: onActiveTabChange,
+  });
 
   // Helpers to classify categories
   const isOrganic = (r: string) => {
@@ -247,7 +260,7 @@ export function TopSourcesChart({ data, isLoading, onViewMore, onFilter }: TopSo
 
   return (
     <div className="h-[500px] flex flex-col">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+      <Tabs value={selectedTab} onValueChange={(value) => handleTabChange(value as 'overview' | 'search' | 'social')} className="flex-1 flex flex-col min-h-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border shrink-0">
            <div>
               <h3 className="text-base font-semibold tracking-tight">Traffic Sources</h3>

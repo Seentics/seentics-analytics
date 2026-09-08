@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Layers, Globe } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/lib/analytics-api';
 
-interface UTMPerformanceData {
+export interface UTMPerformanceData {
   sources: Array<{
     source: string;
     unique_visitors: number;
@@ -40,17 +40,14 @@ interface UTMPerformanceData {
   total_mediums: number;
 }
 
-interface UTMPerformanceChartProps {
-  data: UTMPerformanceData;
+export interface UTMPerformanceChartProps {
+  data?: UTMPerformanceData;
   isLoading?: boolean;
   controlledTab?: 'sources' | 'mediums' | 'campaigns' | 'terms' | 'content';
-  onTabChange?: (tab: 'sources' | 'mediums' | 'campaigns' | 'terms' | 'content') => void;
-  hideTabs?: boolean;
 }
 
-export function UTMPerformanceChart({ data, isLoading = false, controlledTab, onTabChange, hideTabs = false }: UTMPerformanceChartProps) {
-  const [internalTab, setInternalTab] = useState<'sources' | 'mediums' | 'campaigns' | 'terms' | 'content'>('sources');
-  const utmTab = controlledTab ?? internalTab;
+export function UTMPerformanceChart({ data, isLoading = false, controlledTab }: UTMPerformanceChartProps) {
+  const utmTab = controlledTab ?? 'sources';
   
   if (isLoading) {
     return (
@@ -75,7 +72,7 @@ export function UTMPerformanceChart({ data, isLoading = false, controlledTab, on
   }
 
   const getListData = (utmType: string) => {
-    const utmData = data[utmType as keyof UTMPerformanceData] as Array<any>;
+    const utmData = data?.[utmType as keyof UTMPerformanceData] as Array<any> | undefined;
     if (!utmData || !Array.isArray(utmData)) return [] as Array<{ name: string; visitors: number; events: number }>;
     
     return utmData

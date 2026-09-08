@@ -1,6 +1,7 @@
 /**
  * Demo data for website settings, goals, team members, privacy
  */
+import { demoDate } from './fixture-utils';
 
 export const demoWebsite = () => ({
   id: 'demo',
@@ -9,7 +10,7 @@ export const demoWebsite = () => ({
   userId: 'demo-user',
   siteId: 'production-demo',
   createdAt: new Date(2025, 0, 1).toISOString(),
-  updatedAt: new Date().toISOString(),
+  updatedAt: demoDate().toISOString(),
   isVerified: true,
   isActive: true,
   automationEnabled: true,
@@ -35,16 +36,16 @@ export const demoWebsite = () => ({
 });
 
 export const demoGoals = () => ([
-  { id: 'goal-1', websiteId: 'demo', name: 'Signup Completed', type: 'event' as const, identifier: 'signup_complete', createdAt: new Date(2025, 0, 15).toISOString(), updatedAt: new Date().toISOString() },
-  { id: 'goal-2', websiteId: 'demo', name: 'Newsletter Subscribe', type: 'event' as const, identifier: 'newsletter_subscribe', createdAt: new Date(2025, 1, 1).toISOString(), updatedAt: new Date().toISOString() },
-  { id: 'goal-3', websiteId: 'demo', name: 'Pricing Page Visit', type: 'pageview' as const, identifier: '/pricing', createdAt: new Date(2025, 1, 10).toISOString(), updatedAt: new Date().toISOString() },
-  { id: 'goal-4', websiteId: 'demo', name: 'Contact Form Submit', type: 'event' as const, identifier: 'contact_submit', createdAt: new Date(2025, 2, 1).toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'goal-1', websiteId: 'demo', name: 'Signup Completed', type: 'event' as const, identifier: 'signup_complete', createdAt: new Date(2025, 0, 15).toISOString(), updatedAt: demoDate().toISOString() },
+  { id: 'goal-2', websiteId: 'demo', name: 'Newsletter Subscribe', type: 'event' as const, identifier: 'newsletter_subscribe', createdAt: new Date(2025, 1, 1).toISOString(), updatedAt: demoDate().toISOString() },
+  { id: 'goal-3', websiteId: 'demo', name: 'Pricing Page Visit', type: 'pageview' as const, identifier: '/pricing', createdAt: new Date(2025, 1, 10).toISOString(), updatedAt: demoDate().toISOString() },
+  { id: 'goal-4', websiteId: 'demo', name: 'Contact Form Submit', type: 'event' as const, identifier: 'contact_submit', createdAt: new Date(2025, 2, 1).toISOString(), updatedAt: demoDate().toISOString() },
 ]);
 
 export const demoMembers = () => ([
-  { id: 'member-1', websiteId: 'demo', userId: 'demo-user', role: 'owner' as const, createdAt: new Date(2025, 0, 1).toISOString(), updatedAt: new Date().toISOString(), userName: 'Demo Admin', userEmail: 'admin@seentics.com' },
-  { id: 'member-2', websiteId: 'demo', userId: 'demo-user-2', role: 'admin' as const, createdAt: new Date(2025, 1, 1).toISOString(), updatedAt: new Date().toISOString(), userName: 'Sarah Chen', userEmail: 'sarah@seentics.com' },
-  { id: 'member-3', websiteId: 'demo', userId: 'demo-user-3', role: 'viewer' as const, createdAt: new Date(2025, 2, 1).toISOString(), updatedAt: new Date().toISOString(), userName: 'Marcus Johnson', userEmail: 'marcus@seentics.com' },
+  { id: 'member-1', websiteId: 'demo', userId: 'demo-user', role: 'owner' as const, createdAt: new Date(2025, 0, 1).toISOString(), updatedAt: demoDate().toISOString(), userName: 'Demo Admin', userEmail: 'admin@seentics.com' },
+  { id: 'member-2', websiteId: 'demo', userId: 'demo-user-2', role: 'admin' as const, createdAt: new Date(2025, 1, 1).toISOString(), updatedAt: demoDate().toISOString(), userName: 'Sarah Chen', userEmail: 'sarah@seentics.com' },
+  { id: 'member-3', websiteId: 'demo', userId: 'demo-user-3', role: 'viewer' as const, createdAt: new Date(2025, 2, 1).toISOString(), updatedAt: demoDate().toISOString(), userName: 'Marcus Johnson', userEmail: 'marcus@seentics.com' },
 ]);
 
 export const demoPrivacySettings = () => ({
@@ -69,9 +70,9 @@ export const demoPrivacySettings = () => ({
     ccpaCompliant: true,
   },
   complianceStatus: {
-    gdpr: { compliant: true, score: 95, lastAudit: new Date().toISOString() },
-    ccpa: { compliant: true, score: 90, lastAudit: new Date().toISOString() },
-    pecr: { compliant: true, score: 88, lastAudit: new Date().toISOString() },
+    gdpr: { compliant: true, score: 95, lastAudit: demoDate().toISOString() },
+    ccpa: { compliant: true, score: 90, lastAudit: demoDate().toISOString() },
+    pecr: { compliant: true, score: 88, lastAudit: demoDate().toISOString() },
   },
   gdprRequests: [],
 });

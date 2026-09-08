@@ -8,11 +8,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 import AuthInitializer from '@/components/auth-initializer';
-import CookieConsentManager from '@/components/cookie-consent-manager';
 import TrackerScript from '@/components/tracker-script';
 import CrispChat from '@/components/crisp-chat';
 import { Toaster } from '@/components/ui/toaster';
-import { LimitReachedTopBar } from '@/components/subscription';
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import LemonSqueezyScript from '@/components/lemon-squeezy-script';
 
@@ -73,7 +71,6 @@ export default function RootLayout({
 
           <QueryProvider>
             <ThemeCustomizationProvider>
-            {/* <LimitReachedTopBar /> */}
             <div className="relative min-h-screen isolate overflow-x-hidden">
               {/* Ambient Background Blobs */}
               {/* <div className="ambient-blob w-[500px] h-[500px] bg-primary/20 -top-24 -left-24 animate-[pulse_8s_infinite]" />
@@ -96,9 +93,6 @@ export default function RootLayout({
 
         {/* Tracking Code Components */}
         <TrackerScript />
-
-        {/* Cookie Consent Manager */}
-        {/* <CookieConsentManager /> */}
 
         {/* Global Chat Support */}
         <CrispChat />

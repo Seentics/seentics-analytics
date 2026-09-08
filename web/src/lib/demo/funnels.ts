@@ -2,6 +2,7 @@
  * Demo data for funnels
  * Uses snake_case to match the Funnel type from analytics-api.ts
  */
+import { demoDate } from './fixture-utils';
 
 export const demoFunnels = () => ({
   funnels: [
@@ -12,8 +13,8 @@ export const demoFunnels = () => ({
       name: 'Main Conversion Path',
       description: 'Homepage to signup flow',
       is_active: true,
-      created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: demoDate(-30 * 86400000).toISOString(),
+      updated_at: demoDate().toISOString(),
       steps: [
         { id: 'step-1', name: 'Home Page', order: 1, type: 'page' as const, condition: { page: '/' } },
         { id: 'step-2', name: 'Feature Explore', order: 2, type: 'page' as const, condition: { page: '/features' } },
@@ -29,8 +30,8 @@ export const demoFunnels = () => ({
       name: 'Blog Reader Engagement',
       description: 'Blog to docs conversion',
       is_active: true,
-      created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: demoDate(-20 * 86400000).toISOString(),
+      updated_at: demoDate().toISOString(),
       steps: [
         { id: 'step-6', name: 'Blog Index', order: 1, type: 'page' as const, condition: { page: '/blog' } },
         { id: 'step-7', name: 'Article Read', order: 2, type: 'page' as const, condition: { page: '/blog/*' } },
@@ -48,7 +49,7 @@ export const demoFunnelAnalytics = (funnelId: string) => {
         {
           funnel_id: 'demo-funnel-1',
           website_id: 'demo',
-          date: new Date().toISOString(),
+          date: demoDate().toISOString(),
           total_starts: 85432,
           total_conversions: 4876,
           conversion_rate: 5.7,
@@ -70,7 +71,7 @@ export const demoFunnelAnalytics = (funnelId: string) => {
         {
           funnel_id: 'demo-funnel-2',
           website_id: 'demo',
-          date: new Date().toISOString(),
+          date: demoDate().toISOString(),
           total_starts: 34567,
           total_conversions: 4231,
           conversion_rate: 12.2,

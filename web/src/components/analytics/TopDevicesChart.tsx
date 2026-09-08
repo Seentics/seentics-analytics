@@ -6,31 +6,37 @@ import {
   HelpCircle
 } from 'lucide-react';
 import Image from 'next/image';
-import React, { useState } from 'react';
+import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/lib/analytics-api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getBrowserImagePath, getDeviceImagePath, getOsImagePath } from '@/lib/analytics-icons';
+import { useControllableState } from '@/hooks/useControllableState';
 
 interface TopDevicesChartProps {
   data?: any; // { top_devices: [] }
   osData?: any; // { top_os: [] }
-  screenData?: any; // Optional screen data
   browserData?: any; // { top_browsers: [] }
   isLoading?: boolean;
   onFilter?: (filter: Record<string, string>) => void;
+  /** Optional controlled tab for deterministic recorded states. */
+  activeTab?: 'os' | 'devices' | 'browsers';
+  onActiveTabChange?: (tab: 'os' | 'devices' | 'browsers') => void;
 }
 
-const getSystemImage = (label: string, type: 'device' | 'os' | 'screen') => {
+const getSystemImage = (label: string, type: 'device' | 'os') => {
   if (type === 'device') return getDeviceImagePath(label);
-  if (type === 'os') return getOsImagePath(label);
-  return '/images/device/unknown.png';
+  return getOsImagePath(label);
 };
 
-export function TopDevicesChart({ data, osData, screenData, browserData, isLoading, onFilter }: TopDevicesChartProps) {
-  const [activeTab, setActiveTab] = useState('os');
+export function TopDevicesChart({ data, osData, browserData, isLoading, onFilter, activeTab, onActiveTabChange }: TopDevicesChartProps) {
+  const [selectedTab, handleTabChange] = useControllableState({
+    value: activeTab,
+    defaultValue: 'os' as const,
+    onChange: onActiveTabChange,
+  });
 
   if (isLoading) {
     return (
@@ -48,14 +54,10 @@ export function TopDevicesChart({ data, osData, screenData, browserData, isLoadi
     );
   }
 
-  const PageList = ({ items, type }: { items: any[], type: 'device' | 'os' | 'screen' | 'browser' }) => {
-    // If we have screenData from props, use it
+  const PageList = ({ items, type }: { items: any[], type: 'device' | 'os' | 'browser' }) => {
     let displayItems = items;
     
     // Support the wrapper object format if provided
-    if (type === 'screen' && items && (items as any).top_resolutions) {
-      displayItems = (items as any).top_resolutions;
-    }
     if (type === 'browser' && items && (items as any).top_browsers) {
       displayItems = (items as any).top_browsers;
     }
@@ -117,7 +119,7 @@ export function TopDevicesChart({ data, osData, screenData, browserData, isLoadi
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-sm leading-tight text-foreground truncate group-hover:text-primary transition-colors">{label}</div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {type === 'device' ? 'Hardware' : type === 'os' ? 'Software' : type === 'browser' ? 'Browser' : 'Resolution'}
+                    {type === 'device' ? 'Hardware' : type === 'os' ? 'Software' : 'Browser'}
                   </div>
                 </div>
               </div>
@@ -141,7 +143,7 @@ export function TopDevicesChart({ data, osData, screenData, browserData, isLoadi
 
   return (
     <div className="h-[400px] flex flex-col">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+      <Tabs value={selectedTab} onValueChange={(value) => handleTabChange(value as 'os' | 'devices' | 'browsers')} className="flex-1 flex flex-col min-h-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border shrink-0">
            <div>
               <h3 className="text-base font-semibold tracking-tight">System Insights</h3>

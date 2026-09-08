@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { DashboardPageHeader } from '@/components/dashboard-header';
 import { StatCards } from '@/components/seentics-ui/StatCards';
 import { GitBranch, TrendingUp, Users, Target, MoreVertical, Eye, Edit, Trash2, Plus, Calendar, BarChart3, Search } from 'lucide-react';
@@ -49,6 +49,7 @@ function FunnelCellStats({ funnel, dateRange, websiteId }: { funnel: Funnel; dat
 export default function FunnelsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const websiteId = params?.websiteId as string;
   const isDemoMode = isDemo(websiteId);
 
@@ -58,6 +59,20 @@ export default function FunnelsPage() {
   const [editingFunnel, setEditingFunnel] = useState<Funnel | null>(null);
 
   const { data: funnels = [], isLoading: funnelsLoading } = useFunnels(websiteId);
+
+  // Named builder states are for the deterministic demo/content surfaces only.
+  useEffect(() => {
+    if (!isDemoMode) return;
+    const contentState = searchParams.get('contentState');
+    if (contentState === 'create') {
+      setEditingFunnel(null);
+      setIsBuilderOpen(true);
+    }
+    if (contentState === 'edit' && funnels[0]) {
+      setEditingFunnel(funnels[0]);
+      setIsBuilderOpen(true);
+    }
+  }, [funnels, isDemoMode, searchParams]);
   const funnelIds = useMemo(() => funnels.map(f => f.id), [funnels]);
   const avgConversionStr = useMemo(() => {
     if (isDemoMode || funnelIds.length === 0) return '';

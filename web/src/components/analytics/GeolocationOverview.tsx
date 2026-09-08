@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Globe, MapPin } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useControllableState } from '@/hooks/useControllableState';
 import { getCountryFlag } from '@/utils/countries';
 
 // Dynamically import WorldMap to avoid SSR issues
@@ -42,10 +42,17 @@ interface GeolocationOverviewProps {
     isLoading?: boolean;
     className?: string;
     onFilter?: (filter: Record<string, string>) => void;
+    /** Optional controlled tab for embeds and content-engine captures. */
+    activeTab?: 'map2d' | 'map3d' | 'countries' | 'cities' | 'continents';
+    onActiveTabChange?: (tab: 'map2d' | 'map3d' | 'countries' | 'cities' | 'continents') => void;
 }
 
-export function GeolocationOverview({ data, isLoading = false, className = '', onFilter }: GeolocationOverviewProps) {
-    const [geoTab, setGeoTab] = useState<string>('map2d');
+export function GeolocationOverview({ data, isLoading = false, className = '', onFilter, activeTab, onActiveTabChange }: GeolocationOverviewProps) {
+    const [selectedTab, handleTabChange] = useControllableState({
+        value: activeTab,
+        defaultValue: 'map2d' as const,
+        onChange: onActiveTabChange,
+    });
 
     const displayData = data;
     const hasGeoBreakdown =
@@ -91,7 +98,7 @@ export function GeolocationOverview({ data, isLoading = false, className = '', o
                     <p className="text-xs text-muted-foreground">Visitor distribution across global regions</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                    <Tabs value={geoTab} onValueChange={setGeoTab}>
+                    <Tabs value={selectedTab} onValueChange={(value) => handleTabChange(value as 'map2d' | 'map3d' | 'countries' | 'cities' | 'continents')}>
                         <TabsList className="h-8 bg-muted/50 p-0.5 rounded-lg gap-0.5 flex-wrap">
                             <TabsTrigger className='h-7 text-xs font-medium px-3 rounded-lg data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm' value="map2d">2D map</TabsTrigger>
                             <TabsTrigger className='h-7 text-xs font-medium px-3 rounded-lg data-[state=inactive]:text-muted-foreground data-[state=inactive]:bg-transparent data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm' value="map3d">3D map</TabsTrigger>
@@ -114,7 +121,7 @@ export function GeolocationOverview({ data, isLoading = false, className = '', o
                         </div>
                     ) : (
                         <>
-                    {geoTab === 'map2d' && (
+                    {selectedTab === 'map2d' && (
                         <div className="h-[460px] rounded-lg overflow-hidden ">
                             <WorldMap
                                 data={displayData?.countries || []}
@@ -125,7 +132,7 @@ export function GeolocationOverview({ data, isLoading = false, className = '', o
                         </div>
                     )}
 
-                    {geoTab === 'map3d' && (
+                    {selectedTab === 'map3d' && (
                         <div className="h-[460px] rounded-lg overflow-hidden ">
                             <WorldMap
                                 data={displayData?.countries || []}
@@ -136,7 +143,7 @@ export function GeolocationOverview({ data, isLoading = false, className = '', o
                         </div>
                     )}
 
-                    {geoTab === 'countries' && (
+                    {selectedTab === 'countries' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
                             {displayData?.countries?.slice(0, 14).map((country, index) => (
                                 <div key={country.name} className={cn("flex items-center justify-between py-3 border-b border-border hover:bg-accent/5 transition-colors group px-1", onFilter && "cursor-pointer")} onClick={() => onFilter?.({ country: country.name })}>
@@ -173,7 +180,7 @@ export function GeolocationOverview({ data, isLoading = false, className = '', o
                         </div>
                     )}
 
-                    {geoTab === 'cities' && (
+                    {selectedTab === 'cities' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
                             {(!displayData?.cities?.length) && (
                                 <div className="col-span-2 flex flex-col items-center justify-center py-16 text-center">
@@ -225,7 +232,7 @@ export function GeolocationOverview({ data, isLoading = false, className = '', o
                         </div>
                     )}
 
-                    {geoTab === 'continents' && (
+                    {selectedTab === 'continents' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0">
                             {displayData?.continents?.map((continent, index) => (
                                 <div key={continent.name} className="flex items-center justify-between py-3 border-b border-border hover:bg-accent/5 transition-colors group px-1">

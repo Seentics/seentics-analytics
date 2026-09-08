@@ -12,7 +12,6 @@ import type { EventAnnotation } from './EventAnnotations';
 interface TrafficChartProps {
   data: any;
   isLoading: boolean;
-  showHeader?: boolean;
   title?: string;
   subtitle?: string;
   previousData?: any;

@@ -24,7 +24,6 @@
     "bundle-trackers": "node public/trackers/bundle-trackers.cjs",
     "build": "node public/trackers/bundle-trackers.cjs && next build",
     "start": "next start",
-    "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "postinstall": "patch-package && node public/trackers/bundle-trackers.cjs",
     "test": "vitest run",

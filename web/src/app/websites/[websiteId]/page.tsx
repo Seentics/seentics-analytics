@@ -18,7 +18,6 @@ import {
   useGeolocationBreakdown,
   useHourlyStats,
   useDimensionsBulk,
-  useTopResolutions,
   useVisitorInsights,
   usePreviousPeriodDailyStats,
 } from '@/lib/analytics-api';
@@ -257,7 +256,6 @@ export default function WebsiteDashboardPage() {
   const browsersError  = dimensionsError;
   const devicesError   = dimensionsError;
   const osError        = dimensionsError;
-  const { data: topResolutions, isLoading: resolutionsLoading } = useTopResolutions(deferredId, dateRange);
   const { data: geolocationData, isLoading: geolocationLoading, error: geolocationError } = useGeolocationBreakdown(deferredId, dateRange);
   const { data: customEvents, isLoading: customEventsLoading } = useCustomEvents(deferredId, dateRange);
 
@@ -363,27 +361,6 @@ export default function WebsiteDashboardPage() {
       })) ?? [],
     };
   }, [isDemoMode, demoData, topOS]);
-
-  const transformedTopResolutions = useMemo(() => {
-    const src = isDemoMode
-      ? {
-          top_resolutions: [
-            { name: '1920x1080', count: 450, percentage: 45.0 },
-            { name: '1366x768', count: 320, percentage: 32.0 },
-            { name: '375x812', count: 280, percentage: 28.0 },
-            { name: '1440x900', count: 210, percentage: 21.0 },
-            { name: '414x896', count: 150, percentage: 15.0 },
-          ],
-        }
-      : topResolutions;
-    return {
-      top_resolutions: src?.top_resolutions?.map((res: any) => ({
-        name: res.name || 'Unknown',
-        count: res.count || 0,
-        percentage: res.percentage || 0,
-      })) ?? [],
-    };
-  }, [isDemoMode, topResolutions]);
 
   // Transform custom events — filter pageview events and compute totals in one pass
   const transformedCustomEvents = useMemo(() => {
@@ -542,8 +519,6 @@ export default function WebsiteDashboardPage() {
               bounce_rate: 0,
               comparison: {}
             }}
-            dailyStats={finalDailyStats}
-            visitorInsights={finalVisitorInsights}
           />
         </div>
 
@@ -634,9 +609,8 @@ export default function WebsiteDashboardPage() {
                   <TopDevicesChart
                     data={transformedTopDevices}
                     osData={transformedTopOS}
-                    screenData={transformedTopResolutions}
                     browserData={transformedTopBrowsers}
-                    isLoading={devicesLoading || osLoading || resolutionsLoading || browsersLoading}
+                    isLoading={devicesLoading || osLoading || browsersLoading}
                   />
                 </ChartErrorBoundary>
               </CardContent>
@@ -663,7 +637,6 @@ export default function WebsiteDashboardPage() {
                   <UTMPerformanceChart
                     data={transformedCustomEvents.utm_performance as any}
                     isLoading={customEventsLoading}
-                    hideTabs={true}
                     controlledTab={utmTab}
                   />
                 </ChartErrorBoundary>

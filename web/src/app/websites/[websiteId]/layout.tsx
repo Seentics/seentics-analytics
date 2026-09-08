@@ -3,6 +3,7 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/Sidebar';
+import { DashboardContentOverlay } from '@/features/content-demo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export default function Layout({ children }: LayoutProps) {
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
         {children}
       </main>
+      {websiteId && <DashboardContentOverlay websiteId={websiteId} />}
     </div>
   );
 }

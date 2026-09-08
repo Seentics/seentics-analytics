@@ -1,14 +1,8 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useRealtimeGeoData } from '@/lib/analytics-api';
-
-const WorldMap = dynamic(() => import('./WorldMap'), {
-  ssr: false,
-  loading: () => <Skeleton className="w-full h-[400px] rounded-lg" />,
-});
+import { RealtimeGeoMapView } from '@/features/realtime/components/RealtimeGeoMapView';
 
 interface RealtimeGeoMapProps {
   data?: { activities?: any[] };
@@ -32,21 +26,5 @@ export function RealtimeGeoMap({ data, isLoading: _isLoading }: RealtimeGeoMapPr
     percentage: v.percentage,
   })) || [];
 
-  if (isLoading) {
-    return <Skeleton className="w-full h-[400px] rounded-lg" />;
-  }
-
-  return (
-    <div className="surface overflow-hidden">
-      <div className="px-4 py-3 md:px-5 md:py-3.5 border-b border-border">
-        <h3 className="text-base font-medium tracking-tight text-foreground">Live Visitor Locations</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Real-time geographic distribution of active visitors.
-        </p>
-      </div>
-      <div className="p-4 md:p-5 h-[500px]">
-        <WorldMap data={mapData} view="globe" showLegend={false} />
-      </div>
-    </div>
-  );
+  return <RealtimeGeoMapView data={mapData} isLoading={isLoading} />;
 }

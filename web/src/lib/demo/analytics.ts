@@ -2,14 +2,18 @@
  * Demo data for analytics: dashboard, daily/hourly stats, top-X breakdowns, realtime, custom events
  */
 
-const now = new Date();
+import { createDemoRandom, demoDate } from './fixture-utils';
+
+const now = demoDate();
 const daysAgo = (days: number) => {
   const date = new Date(now);
   date.setDate(date.getDate() - days);
   return date.toISOString().split('T')[0];
 };
 
-export const demoAnalyticsData = () => ({
+export const demoAnalyticsData = () => {
+  const random = createDemoRandom('analytics-overview');
+  return ({
   dashboardData: {
     total_visitors: 89432,
     unique_visitors: 89432,
@@ -46,10 +50,10 @@ export const demoAnalyticsData = () => ({
   dailyStats: {
     daily_stats: Array.from({ length: 30 }, (_, i) => ({
       date: daysAgo(29 - i),
-      views: Math.floor(12000 + Math.random() * 4000 + Math.sin(i / 2) * 2000),
-      unique: Math.floor(4000 + Math.random() * 1500 + Math.sin(i / 2) * 800),
-      bounce_rate: 30 + Math.random() * 10,
-      avg_session_duration: 280 + Math.random() * 60,
+      views: Math.floor(12000 + random() * 4000 + Math.sin(i / 2) * 2000),
+      unique: Math.floor(4000 + random() * 1500 + Math.sin(i / 2) * 800),
+      bounce_rate: 30 + random() * 10,
+      avg_session_duration: 280 + random() * 60,
     })),
   },
 
@@ -58,9 +62,9 @@ export const demoAnalyticsData = () => ({
       const curve = Math.sin((hour - 6) * Math.PI / 12) + 1;
       return {
         hour,
-        timestamp: new Date(new Date().setHours(hour, 0, 0, 0)).toISOString(),
-        views: Math.floor(400 + (curve * 800) + Math.random() * 200),
-        unique: Math.floor(150 + (curve * 300) + Math.random() * 100),
+        timestamp: new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0).toISOString(),
+        views: Math.floor(400 + (curve * 800) + random() * 200),
+        unique: Math.floor(150 + (curve * 300) + random() * 100),
         hour_label: `${hour.toString().padStart(2, '0')}:00`,
       };
     }),
@@ -206,10 +210,10 @@ export const demoAnalyticsData = () => ({
     website_id: 'demo',
     trends: Array.from({ length: 24 }, (_, hour) => {
       const curve = Math.sin((hour - 6) * Math.PI / 12) + 1;
-      const visitors = Math.floor(80 + (curve * 350) + Math.random() * 60);
-      const pageViews = Math.floor(visitors * (2.5 + Math.random()));
+      const visitors = Math.floor(80 + (curve * 350) + random() * 60);
+      const pageViews = Math.floor(visitors * (2.5 + random()));
       const sessions = Math.floor(visitors * 0.7);
-      const ts = new Date();
+      const ts = demoDate();
       ts.setHours(hour, 0, 0, 0);
       return {
         timestamp: ts.toISOString(),
@@ -250,34 +254,36 @@ export const demoAnalyticsData = () => ({
 
   recentActivity: {
     activities: [
-      { page: '/', country: 'United States', browser: 'Chrome', device: 'Desktop', os: 'macOS', referrer: 'https://google.com/', timestamp: new Date(Date.now() - 30000).toISOString() },
-      { page: '/pricing', country: 'Germany', browser: 'Firefox', device: 'Desktop', os: 'Windows 10', referrer: '', timestamp: new Date(Date.now() - 60000).toISOString() },
-      { page: '/signup', country: 'United Kingdom', browser: 'Safari', device: 'Mobile', os: 'iOS', referrer: 'https://twitter.com/', timestamp: new Date(Date.now() - 120000).toISOString() },
-      { page: '/docs', country: 'Canada', browser: 'Chrome', device: 'Desktop', os: 'Linux', referrer: '', timestamp: new Date(Date.now() - 180000).toISOString() },
-      { page: '/features', country: 'France', browser: 'Edge', device: 'Tablet', os: 'Android', referrer: 'https://news.ycombinator.com/', timestamp: new Date(Date.now() - 240000).toISOString() },
+      { page: '/', country: 'United States', browser: 'Chrome', device: 'Desktop', os: 'macOS', referrer: 'https://google.com/', timestamp: demoDate(-30000).toISOString() },
+      { page: '/pricing', country: 'Germany', browser: 'Firefox', device: 'Desktop', os: 'Windows 10', referrer: '', timestamp: demoDate(-60000).toISOString() },
+      { page: '/signup', country: 'United Kingdom', browser: 'Safari', device: 'Mobile', os: 'iOS', referrer: 'https://twitter.com/', timestamp: demoDate(-120000).toISOString() },
+      { page: '/docs', country: 'Canada', browser: 'Chrome', device: 'Desktop', os: 'Linux', referrer: '', timestamp: demoDate(-180000).toISOString() },
+      { page: '/features', country: 'France', browser: 'Edge', device: 'Tablet', os: 'Android', referrer: 'https://news.ycombinator.com/', timestamp: demoDate(-240000).toISOString() },
     ],
   },
 
   // Aliases used by the overview page
   get geolocationData() { return demoGeolocation(); },
   get customEvents() { return demoCustomEvents(); },
-});
+  });
+};
 
 export const demoRealtimeData = () => {
+  const random = createDemoRandom('realtime');
   const timeline = [];
-  const now = new Date();
+  const now = demoDate();
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 60000);
     timeline.push({
       minute: `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`,
-      visitors: Math.floor(Math.random() * 8) + 1,
-      views: Math.floor(Math.random() * 15) + 2,
+      visitors: Math.floor(random() * 8) + 1,
+      views: Math.floor(random() * 15) + 2,
     });
   }
   return {
-    active_visitors: Math.floor(Math.random() * 30) + 15,
-    pageviews: Math.floor(Math.random() * 100) + 40,
-    sessions: Math.floor(Math.random() * 40) + 15,
+    active_visitors: Math.floor(random() * 30) + 15,
+    pageviews: Math.floor(random() * 100) + 40,
+    sessions: Math.floor(random() * 40) + 15,
     top_pages: [
       { page: '/', visitors: 12 },
       { page: '/pricing', visitors: 8 },
@@ -313,10 +319,12 @@ export const demoRealtimeData = () => {
   };
 };
 
-export const demoCustomEvents = () => ({
+export const demoCustomEvents = () => {
+  const random = createDemoRandom('custom-events');
+  return ({
   timeseries: Array.from({ length: 30 }, (_, i) => ({
     date: daysAgo(29 - i),
-    event_count: Math.floor(800 + Math.random() * 400 + Math.sin(i / 3) * 300),
+    event_count: Math.floor(800 + random() * 400 + Math.sin(i / 3) * 300),
   })),
   top_events: [
     { event_type: 'signup_click', count: 12543, unique_visitors: 9876, unique_users: 9876, unique_sessions: 9200, sample_properties: { page: '/signup' }, common_properties: {} },
@@ -362,6 +370,7 @@ export const demoCustomEvents = () => ({
     total_mediums: 5,
   },
 });
+};
 
 export const demoGeolocation = () => ({
   countries: [

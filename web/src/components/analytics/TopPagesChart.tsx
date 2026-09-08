@@ -27,17 +27,19 @@ import {
   Zap,
   ChevronRight
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useControllableState } from '@/hooks/useControllableState';
 
-interface TopPagesChartProps {
+export interface TopPagesChartProps {
   data: any; // Top pages data: { top_pages: [] }
   entryPages?: any[]; // { page, sessions, bounce_rate }
   exitPages?: any[]; // { page, sessions, exit_rate }
   isLoading: boolean;
-  onViewMore?: () => void;
-  showHeader?: boolean;
   onFilter?: (filter: Record<string, string>) => void;
+  /** Optional controlled tab for replayable product demos and embedded screens. */
+  activeTab?: 'top' | 'entry' | 'exit';
+  onActiveTabChange?: (tab: 'top' | 'entry' | 'exit') => void;
 }
 
 const getPageIcon = (page: string) => {
@@ -119,11 +121,15 @@ export const TopPagesChart: React.FC<TopPagesChartProps> = ({
   entryPages = [],
   exitPages = [],
   isLoading,
-  onViewMore,
-  showHeader = false,
   onFilter,
+  activeTab,
+  onActiveTabChange,
 }) => {
-  const [activeTab, setActiveTab] = useState('top');
+  const [selectedTab, handleTabChange] = useControllableState({
+    value: activeTab,
+    defaultValue: 'top' as const,
+    onChange: onActiveTabChange,
+  });
 
   if (isLoading) {
     return (
@@ -201,7 +207,7 @@ export const TopPagesChart: React.FC<TopPagesChartProps> = ({
 
   return (
     <div className="h-[500px] flex flex-col">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+      <Tabs value={selectedTab} onValueChange={(value) => handleTabChange(value as 'top' | 'entry' | 'exit')} className="flex-1 flex flex-col min-h-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border shrink-0">
            <div>
               <h3 className="text-base font-semibold tracking-tight">Top Pages</h3>

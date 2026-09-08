@@ -1,6 +1,7 @@
 /**
  * Demo data for automations
  */
+import { demoDate } from './fixture-utils';
 
 export const demoAutomations = () => ({
   automations: [
@@ -13,8 +14,8 @@ export const demoAutomations = () => ({
       triggerType: 'custom_event',
       triggerConfig: { eventName: 'signup_complete' },
       isActive: true,
-      createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: demoDate(-30 * 86400000).toISOString(),
+      updatedAt: demoDate().toISOString(),
       actions: [
         { actionType: 'email' as const, actionConfig: { subject: 'Welcome to Seentics!', template: 'welcome_series_1' } },
       ],
@@ -29,8 +30,8 @@ export const demoAutomations = () => ({
       triggerType: 'custom_event',
       triggerConfig: { eventName: 'pricing_view', count: 3 },
       isActive: true,
-      createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: demoDate(-20 * 86400000).toISOString(),
+      updatedAt: demoDate().toISOString(),
       actions: [
         { actionType: 'webhook' as const, actionConfig: { url: 'https://hooks.slack.com/...', channel: '#growth-alerts' } },
       ],
@@ -45,8 +46,8 @@ export const demoAutomations = () => ({
       triggerType: 'exit_intent',
       triggerConfig: { pages: ['/pricing'] },
       isActive: true,
-      createdAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: demoDate(-14 * 86400000).toISOString(),
+      updatedAt: demoDate().toISOString(),
       actions: [
         { actionType: 'modal' as const, actionConfig: { title: 'Wait! Get 20% off', template: 'exit_discount' } },
       ],
@@ -61,8 +62,8 @@ export const demoAutomations = () => ({
       triggerType: 'inactivity',
       triggerConfig: { daysInactive: 7 },
       isActive: false,
-      createdAt: new Date(Date.now() - 45 * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+      createdAt: demoDate(-45 * 86400000).toISOString(),
+      updatedAt: demoDate(-5 * 86400000).toISOString(),
       actions: [
         { actionType: 'email' as const, actionConfig: { subject: 'We miss you!', template: 'retention_recovery' } },
       ],

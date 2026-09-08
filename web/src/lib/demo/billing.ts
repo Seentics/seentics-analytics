@@ -5,7 +5,7 @@
 export const demoBilling = () => ({
   plan: 'pro',
   status: 'active',
-  currentPeriodEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
+  currentPeriodEnd: demoDate(30 * 86400000).toISOString(),
   monthlyPrice: 49,
   usage: {
     monthlyEvents: { current: 245000, limit: 2000000 },
@@ -43,3 +43,4 @@ export const demoSubscription = () => ({
   features: ['all'],
   isActive: true,
 });
+import { demoDate } from './fixture-utils';

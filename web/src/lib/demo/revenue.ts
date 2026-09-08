@@ -2,7 +2,9 @@
  * Demo revenue / attribution data for the Revenue dashboard (websiteId === "demo")
  */
 
-const now = new Date();
+import { createDemoRandom, demoDate } from './fixture-utils';
+
+const now = demoDate();
 const daysAgo = (days: number) => {
   const d = new Date(now);
   d.setDate(d.getDate() - days);
@@ -12,11 +14,12 @@ const daysAgo = (days: number) => {
 const iso = (d: Date) => d.toISOString();
 
 export const demoRevenueDashboard = (days: number) => {
+  const random = createDemoRandom(`revenue-${days}`);
   const daily = Array.from({ length: days }, (_, i) => {
     const d = daysAgo(days - 1 - i);
     const base = 4200 + Math.sin(i / 2.2) * 800 + (i > days * 0.7 ? 400 : 0);
-    const revenue = Math.round(base * 100 + Math.random() * 900) / 100;
-    const orders = Math.max(12, Math.round(revenue / 85 + (Math.random() - 0.3) * 8));
+    const revenue = Math.round(base * 100 + random() * 900) / 100;
+    const orders = Math.max(12, Math.round(revenue / 85 + (random() - 0.3) * 8));
     return { date: d.toISOString().split('T')[0]!, revenue, orders };
   });
 

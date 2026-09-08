@@ -15,10 +15,9 @@ interface TopCountriesChartProps {
     }>;
   };
   isLoading?: boolean;
-  onViewMore?: () => void;
 }
 
-export function TopCountriesChart({ data, isLoading, onViewMore }: TopCountriesChartProps) {
+export function TopCountriesChart({ data, isLoading }: TopCountriesChartProps) {
   // Country name to ISO code mapping
   const getCountryCode = (countryName: string): string => {
     const countryMap: Record<string, string> = {

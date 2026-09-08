@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Bot, ArrowLeft, Braces, LayoutTemplate, Save, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ const TPL_KEY = 'snc_auto_tpl';
 export default function NewAutomationPage() {
   const params    = useParams();
   const router    = useRouter();
+  const searchParams = useSearchParams();
   const websiteId = params?.websiteId as string;
 
   const [name, setName] = useState('Untitled Automation');
@@ -41,6 +42,19 @@ export default function NewAutomationPage() {
       }
     } catch { /* ignore */ }
   }, []);
+
+  // Exposes the builder's real inner dialogs for video/content capture without
+  // changing normal customer behaviour.
+  useEffect(() => {
+    if (websiteId !== 'demo') return;
+    const contentState = searchParams.get('contentState');
+    if (contentState !== 'settings' && contentState !== 'json') return;
+    const timer = window.setTimeout(() => {
+      if (contentState === 'settings') builderRef.current?.openSettings();
+      if (contentState === 'json') builderRef.current?.openJson();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [searchParams, websiteId]);
 
   const handleSave = (definition: AutomationDefinition) => {
     createMutation.mutate(

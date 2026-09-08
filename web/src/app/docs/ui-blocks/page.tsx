@@ -69,7 +69,6 @@ npm install /path/to/seentics/ui/blocks`}
             [<C>TrafficChart</C>, 'Visitors and pageviews over time.'],
             [<C>TopPages</C>, 'Most-viewed pages.'],
             [<C>TopSources</C>, 'Referrers and campaigns.'],
-            [<C>GoalConversions</C>, 'Goal completions.'],
             [<C>FunnelChart</C>, 'A funnel and its step drop-off.'],
             [<C>RealtimeCounter</C>, 'Live visitor count.'],
             [<C>HeatmapViewer</C>, 'A click or scroll map for a page.'],

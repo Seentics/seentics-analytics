@@ -1,8 +1,9 @@
 'use client';
 
-import { useRealtimeData, useRecentActivity, type RealtimeMinute } from '@/lib/analytics-api';
+import { useRealtimeData, useRecentActivity, type RealtimeData, type RealtimeMinute } from '@/lib/analytics-api';
 import { RecentActivityFeed } from '@/components/analytics/RecentActivityFeed';
 import { RealtimeGeoMap } from '@/components/analytics/RealtimeGeoMap';
+import { RealtimeGeoMapView } from '@/features/realtime/components/RealtimeGeoMapView';
 import { DashboardPageHeader } from '@/components/dashboard-header';
 import { StatCards } from '@/components/seentics-ui/StatCards';
 import { Button } from '@/components/ui/button';
@@ -174,31 +175,33 @@ function TopList({ title, rows, isLoading, type = 'pages' }: {
   );
 }
 
-/** `/websites/[id]/realtime` — matches Replays / Heatmaps shell, header, and stat tiles. */
-export function RealtimeDashboardSection({ websiteId }: { websiteId: string }) {
-  const isDemoMode = isDemo(websiteId);
-  const {
-    data,
-    isLoading: statsLoading,
-    isFetching: statsFetching,
-    refetch: refetchStats,
-  } = useRealtimeData(websiteId);
-  const {
-    data: recentActivityData,
-    isLoading: recentLoading,
-    isFetching: recentFetching,
-    refetch: refetchActivity,
-  } = useRecentActivity(websiteId, {
-    limit: 50,
-    withinMinutes: 30,
-    refetchIntervalMs: 15_000,
-    staleTimeMs: 12_000,
-  });
+export interface RealtimeDashboardViewProps {
+  websiteId: string;
+  data?: RealtimeData;
+  recentActivityData?: { activities?: Array<{ page: string; country: string; device: string; browser: string; os?: string; referrer: string; timestamp: string }> };
+  geoData?: Array<{ name: string; code?: string; count: number; percentage: number }>;
+  isLoading?: boolean;
+  isActivityLoading?: boolean;
+  isRefreshing?: boolean;
+  showRefresh?: boolean;
+  onRefresh?: () => void;
+}
 
+/** Presentation-only realtime screen. Feed it fixtures or API results from an adapter. */
+export function RealtimeDashboardView({
+  websiteId,
+  data,
+  recentActivityData,
+  geoData,
+  isLoading = false,
+  isActivityLoading = false,
+  isRefreshing = false,
+  showRefresh = true,
+  onRefresh,
+}: RealtimeDashboardViewProps) {
   const pageviewsN = Number(data?.pageviews ?? 0);
   const activeN = Number(data?.active_visitors ?? 0);
   const pps = activeN > 0 ? (pageviewsN / activeN).toFixed(1) : '0.0';
-  const refreshing = statsFetching || recentFetching;
 
   return (
     <div className="w-full max-w-[1440px] mx-auto p-4 md:p-6 lg:p-8">
@@ -206,27 +209,24 @@ export function RealtimeDashboardSection({ websiteId }: { websiteId: string }) {
         title="Realtime"
         description="Live traffic in the last ~30 minutes and a running log of recent pageviews with visitor context."
       >
-        {!isDemoMode && (
+        {showRefresh && (
           <Button
             variant="default"
             size="sm"
             className="h-8 gap-1.5"
-            disabled={refreshing}
-            onClick={() => {
-              void refetchStats();
-              void refetchActivity();
-            }}
+            disabled={isRefreshing}
+            onClick={onRefresh}
           >
-            <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+            <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
             Refresh
           </Button>
         )}
       </DashboardPageHeader>
 
       <StatCards
-        isLoading={statsLoading}
+        isLoading={isLoading}
         cards={
-          statsLoading
+          isLoading
             ? []
             : [
                 {
@@ -247,11 +247,11 @@ export function RealtimeDashboardSection({ websiteId }: { websiteId: string }) {
         }
       />
 
-      <RealtimeTimelineChart timeline={data?.timeline} isLoading={statsLoading} />
+      <RealtimeTimelineChart timeline={data?.timeline} isLoading={isLoading} />
 
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <TopList title="Top pages" rows={data?.top_pages} isLoading={statsLoading} type="pages" />
-        <TopList title="Top countries" rows={data?.top_countries} isLoading={statsLoading} type="countries" />
+        <TopList title="Top pages" rows={data?.top_pages} isLoading={isLoading} type="pages" />
+        <TopList title="Top countries" rows={data?.top_countries} isLoading={isLoading} type="countries" />
       </div>
 
       <div className="surface mt-6 overflow-hidden">
@@ -267,15 +267,46 @@ export function RealtimeDashboardSection({ websiteId }: { websiteId: string }) {
             rowLayout="table"
             websiteId={websiteId}
             data={recentActivityData}
-            isLoading={recentLoading}
+            isLoading={isActivityLoading}
             tableScrollClassName="border-0 bg-transparent rounded-none shadow-none max-h-[min(32rem,60vh)]"
           />
         </div>
       </div>
 
       <div className="mt-6">
-        <RealtimeGeoMap data={recentActivityData} isLoading={recentLoading} />
+        {geoData ? (
+          <RealtimeGeoMapView data={geoData} isLoading={isActivityLoading} />
+        ) : (
+          <RealtimeGeoMap data={recentActivityData} isLoading={isActivityLoading} />
+        )}
       </div>
     </div>
+  );
+}
+
+/** `/websites/[id]/realtime` live-data adapter. */
+export function RealtimeDashboardSection({ websiteId }: { websiteId: string }) {
+  const isDemoMode = isDemo(websiteId);
+  const realtime = useRealtimeData(websiteId);
+  const activity = useRecentActivity(websiteId, {
+    limit: 50,
+    withinMinutes: 30,
+    refetchIntervalMs: 15_000,
+    staleTimeMs: 12_000,
+  });
+  return (
+    <RealtimeDashboardView
+      websiteId={websiteId}
+      data={realtime.data}
+      recentActivityData={activity.data}
+      isLoading={realtime.isLoading}
+      isActivityLoading={activity.isLoading}
+      isRefreshing={realtime.isFetching || activity.isFetching}
+      showRefresh={!isDemoMode}
+      onRefresh={() => {
+        void realtime.refetch();
+        void activity.refetch();
+      }}
+    />
   );
 }

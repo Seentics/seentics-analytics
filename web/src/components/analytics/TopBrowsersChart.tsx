@@ -10,8 +10,6 @@ import React from 'react';
 interface TopBrowsersChartProps {
   data: any;
   isLoading: boolean;
-  onViewMore?: () => void;
-  showHeader?: boolean;
 }
 
 const BrowserIcon = ({ browser }: { browser: string }) => {
@@ -40,7 +38,7 @@ const getBrowserName = (browser: string) => {
   return browser;
 };
 
-export const TopBrowsersChart: React.FC<TopBrowsersChartProps> = ({ data, isLoading, showHeader = false }) => {
+export const TopBrowsersChart: React.FC<TopBrowsersChartProps> = ({ data, isLoading }) => {
   if (isLoading) {
     return <Skeleton className="h-[400px] w-full" />;
   }
@@ -64,13 +62,6 @@ export const TopBrowsersChart: React.FC<TopBrowsersChartProps> = ({ data, isLoad
 
   return (
     <div className="space-y-3 h-[400px] flex flex-col">
-      {showHeader && (
-        <div className="flex items-center justify-between shrink-0">
-          <h3 className="text-lg font-semibold text-foreground">Top Browsers</h3>
-        </div>
-      )}
-
-
 
       {/* Browsers List */}
       <div className="space-y-0 flex-1 overflow-y-auto pr-1 custom-scrollbar">

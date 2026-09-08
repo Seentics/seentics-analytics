@@ -1,6 +1,7 @@
 /**
  * Demo data for heatmaps
  */
+import { createDemoRandom } from './fixture-utils';
 
 export const demoHeatmapPages = () => ([
   { url: '/', views: 184231, clicks: 42187, avg_scroll: 72, active: true },
@@ -12,19 +13,20 @@ export const demoHeatmapPages = () => ([
 ]);
 
 export const demoHeatmapPoints = (type: 'click' | 'move' = 'click') => {
+  const random = createDemoRandom(`heatmap-${type}`);
   const count = type === 'click' ? 50 : 200;
   const points: Array<{ x: number; y: number; intensity: number }> = [];
 
   for (let i = 0; i < count; i++) {
-    const centerX = Math.random() * 800 + 100;
-    const centerY = Math.random() * 800 + 100;
-    const clusterSize = Math.floor(Math.random() * 10) + 1;
+    const centerX = random() * 800 + 100;
+    const centerY = random() * 800 + 100;
+    const clusterSize = Math.floor(random() * 10) + 1;
 
     for (let j = 0; j < clusterSize; j++) {
       points.push({
-        x: Math.round(centerX + (Math.random() - 0.5) * 50),
-        y: Math.round(centerY + (Math.random() - 0.5) * 50),
-        intensity: Math.floor(Math.random() * 20) + 1,
+        x: Math.round(centerX + (random() - 0.5) * 50),
+        y: Math.round(centerY + (random() - 0.5) * 50),
+        intensity: Math.floor(random() * 20) + 1,
       });
     }
   }
